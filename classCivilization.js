@@ -7,7 +7,7 @@ const ENV_SIZE	= 1000000;		// 容器尺寸
 const CIV_MAX	= 100000;		// 文明数量
 const CIV_LIMIT	= 999999999;	// 文明的文明值上限
 
-const CIV_VALVE	= 10000000;		// 发展速度减半的阀值
+const CIV_VALVE	= 50000000;		// 发展速度减半的阀值
 
 var civilization_total = 0;		// 目前文明总数
 
@@ -26,22 +26,22 @@ function Civilization () {
 };
 
 Civilization.prototype.grow = function () {
-	var rate = this.civilizationi / CIV_VALVE;
-	var speed = this.civilization / (1 + rate * rate) * (CIV_LIMIT - this.civilization);
+	var rate = this.civilization / CIV_VALVE;
+	var speed = this.civilization / (1 + rate * rate) * (CIV_LIMIT - this.civilization) / CIV_LIMIT;
 	if (speed < 0) speed = 0;
 	this.civilization += speed;
-	
+};
+Civilization.prototype.draw = function () {
 	var total = 120, value = Math.round(this.civilization / CIV_LIMIT * total);
 	var s = '';
 	var i;
 	for (i = 0; i < value; i += 1) {
-		s += '+';
+		s += '0';
 	}
 	for (i = value; i < total; i += 1) {
-		s += '-';
+		s += '.';
 	}
-	console.log('s');
-	console.log(s.length);
+	console.log(s);
 };
 
 exports.Civilization = Civilization;
