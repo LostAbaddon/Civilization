@@ -2,17 +2,18 @@ require('./utils');
 
 const libClass = require('./classCivilization');
 const classCiv = libClass.Civilization;
+const classSoc = libClass.Society;
 
-var civilization = new classCiv();
+var society = new classSoc();
 
 function develop () {
-	var i, limit = 250, j, step = 10;
+	var i, limit = 200, j, step = 15;
 	for (i = 0; i < limit; i += 1) {
 		for (j = 0; j < step; j += 1) {
-			civilization.grow();
+			society.develop();
 		}
-		civilization.draw();
+		society.draw();
 	}
 }
-console.log(civilization);
+console.log(society);
 develop();
