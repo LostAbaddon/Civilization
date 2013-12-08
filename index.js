@@ -6,14 +6,19 @@ const classSoc = libClass.Society;
 
 var society = new classSoc();
 
+var developEra = 200;
+var era = 0;
 function develop () {
-	var i, limit = 200, j, step = 15;
-	for (i = 0; i < limit; i += 1) {
-		for (j = 0; j < step; j += 1) {
-			society.develop();
-		}
-		society.draw();
+	var i, step = 15;
+	for (i = 0; i < step; i += 1) {
+		society.develop(era);
+	}
+	era += 1;
+	society.draw(era);
+	
+	developEra -= 1;
+	if (developEra > 0) {
+		process.nextTick(develop);
 	}
 }
-console.log(society);
 develop();
