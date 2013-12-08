@@ -138,6 +138,8 @@ Civilization.prototype.findCivilization = function (civ, isInform, logText) {
 };
 Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
 	if (this === civ) return;
+	if (civ.civilization <= 0) return;
+	if (this.civilization <= 0) return;
 
 	/*
 	logText = logText || '';
@@ -182,7 +184,10 @@ Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
 	}
 };
 Civilization.prototype.beenHelped = function (civ, logText) {
+	if (this === civ) return;
+
 	// 对已死的文明，就不救了
+	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 	
 	/*
