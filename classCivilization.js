@@ -9,27 +9,26 @@ const isNull = utils.isNull;
 const random = utils.random;
 
 const ENV_SIZE	= 10000;		// 容器尺寸
-//const CIV_MAX	= 100000;		// 文明数量
-const CIV_MAX	= 10000;		// 文明数量
+const CIV_MAX	= 100000;		// 文明数量
 const CIV_LIMIT	= 999999999;	// 文明的文明值上限
 
 const CIV_VALVE			= 50000000;	// 发展速度减半的阀值
-const CIV_SHOW			= 0.9;		// 主动告知对方的概率
-const CIV_ATCK			= 0.9;		// 主动攻击对方的概率
-const CIV_HELP			= 0.1;		// 主动帮助弱者的概
-const CIV_ATTACK_HIDE	= 0.1;		// 被攻击后隐藏
-const CIV_ATTACK_HELP	= 0.1;		// 被攻击后援助
-const CIV_ATTACK_BACK	= 0.9;		// 被攻击后反击
-const CIV_ATTACK_ANIT	= 0.9;		// 被攻击后协助反击
-const INTSTL_CIV_LIMIT	= 0.01;		// 具有星际探索能力的文明阀值，这个值也决定了发现别的文明的能力
+const CIV_SHOW			= 0.5;		// 主动告知对方的概率
+const CIV_ATCK			= 0.5;		// 主动攻击对方的概率
+const CIV_HELP			= 0.5;		// 主动帮助弱者的概
+const CIV_ATTACK_HIDE	= 0.5;		// 被攻击后隐藏
+const CIV_ATTACK_HELP	= 0.5;		// 被攻击后援助
+const CIV_ATTACK_BACK	= 0.5;		// 被攻击后反击
+const CIV_ATTACK_ANIT	= 0.5;		// 被攻击后协助反击
+const INTSTL_CIV_LIMIT	= 1;		// 具有星际探索能力的文明阀值，这个值也决定了发现别的文明的能力
 const CIV_HIDE_LIMIT	= 10000;	// 文明隐藏自身能力的标值
 const EXPAND_LIMIT		= 10000;		// 拓展的极限速度（倍）
 const HELP_LIMIT		= 10000;		// 拓展的极限速度（倍）
 
-const CIV_HELP_RATE		= 0.001;	// 帮助弱者文明的程度，为文明差的比例
-const CIV_ATTACK_DAMAGE	= 1.0;	// 文明攻击力，为文明的比例
+const CIV_HELP_RATE		= 0.01;	// 帮助弱者文明的程度，为文明差的比例
+const CIV_ATTACK_DAMAGE	= 0.5;	// 文明攻击力，为文明的比例
 
-const CIV_BIRTH_RATE	= 0.05;	// 每一轮新文明诞生几率
+const CIV_BIRTH_RATE	= 0.5;	// 每一轮新文明诞生几率
 
 var civilization_total = 0;		// 目前文明总数
 
@@ -94,7 +93,7 @@ Civilization.prototype.hidePower = function () {
 Civilization.prototype.seekPower = function () {
 	return this.curiosity * this.civilization / (1 + Math.pow(this.civilization / CIV_HIDE_LIMIT, 1));
 };
-Civilization.prototype.findCivilization = function (civ, isInform, logText) {
+Civilization.prototype.findCivilization = function (civ, isInform) {
 	if (civ === this) return;
 	// 如果已经发现过了
 	if (this.others.indexOf(civ) >= 0) return;
@@ -102,17 +101,11 @@ Civilization.prototype.findCivilization = function (civ, isInform, logText) {
 	this.others.push(civ);
 	if (civ.known.indexOf(this) < 0) civ.known.push(this);
 	
-	/*
-	logText = logText || '';
-	logText = logText + " > " + this.id + " find " + civ.id;
-	console.log(logText);
-	*/
-	
 	// 如果是自我展示的性格，则告知对方自己的存在
 	if (this.charactor.showSelf) {
 		if (this.ally.indexOf(civ) < 0) {
 			this.ally.push(civ);
-			civ.findCivilization(this, false, logText);
+			civ.findCivilization(this, false);
 		}
 	}
 	// 告诉所有盟友这颗星球的存在
@@ -120,33 +113,27 @@ Civilization.prototype.findCivilization = function (civ, isInform, logText) {
 		var allies = getAllies(this);
 		var l = allies.length, i;
 		for (i = 0; i < l; i += 1) {
-			allies[i].findCivilization(civ, true, logText);
+			allies[i].findCivilization(civ, true);
 		}
 	}
 	
 	// 如果是主动攻击的性格，则攻击对方
 	if (this.charactor.attack) {
-		civ.beenAttacked(this, false, logText);
+		civ.beenAttacked(this, false);
 	}
 	
 	// 如果是帮助弱者的性格，则判断对方比自己弱，若真则帮助对方
 	if (this.charactor.helpWeeker) {
 		if (civ.civilization < this.civilization) {
-			civ.beenHelped(this, logText);
+			civ.beenHelped(this);
 		}
 	}
 };
-Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
+Civilization.prototype.beenAttacked = function (civ, isBack) {
 	if (this === civ) return;
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 
-	/*
-	logText = logText || '';
-	logText = logText + ' > ' + civ.id + ' atck ' + this.id;
-	console.log(logText);
-	*/
-	
 	// 遭受打击
 	this.civilization -= civ.civilization * CIV_ATTACK_DAMAGE;
 	if (this.civilization < 0) this.civilization = 0;
@@ -156,11 +143,11 @@ Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
 	if (random() < this.mental) this.charactor.attack		= true;
 	if (random() < this.mental) this.charactor.helpWeeker	= false;
 	
-	if (isBack !== true && this.others.indexOf(civ) < 0) this.findCivilization(civ, false, logText);
+	if (isBack !== true && this.others.indexOf(civ) < 0) this.findCivilization(civ, false);
 
 	// 反击
 	if (this.charactor.backAfterAttack && isBack !== true) {
-		civ.beenAttacked(this, true, logText);
+		civ.beenAttacked(this, true);
 	}
 	// 盟友行为
 	var l = this.ally.length, i, ally;
@@ -169,11 +156,11 @@ Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
 		if (!isNull(ally) && ally !== this && ally !== civ) {
 			// 协助反击
 			if (ally.charactor.anitAfterAttack) {
-				civ.beenAttacked(ally, true, logText);
+				civ.beenAttacked(ally, true);
 			}
 			// 协助重建
 			if (ally.charactor.helpAfterAttack) {
-				if (ally.civilization > this.civilization) this.beenHelped(ally, logText);
+				if (ally.civilization > this.civilization) this.beenHelped(ally);
 			}
 		}
 	}
@@ -183,19 +170,13 @@ Civilization.prototype.beenAttacked = function (civ, isBack, logText) {
 		this.hideSelf();
 	}
 };
-Civilization.prototype.beenHelped = function (civ, logText) {
+Civilization.prototype.beenHelped = function (civ) {
 	if (this === civ) return;
 
 	// 对已死的文明，就不救了
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 	
-	/*
-	logText = logText || '';
-	logText = logText + ' > ' + civ.id + ' help ' + this.id;
-	console.log(logText);
-	*/
-
 	// 获得帮助
 	var help = (civ.civilization - this.civilization) * CIV_HELP_RATE * (CIV_LIMIT - this.civilization) / CIV_LIMIT;
 	if (help > this.civilization * HELP_LIMIT) help = this.civilization * HELP_LIMIT;
@@ -207,7 +188,7 @@ Civilization.prototype.beenHelped = function (civ, logText) {
 	if (random() < this.mental) this.charactor.attack		= false;
 	if (random() < this.mental) this.charactor.helpWeeker	= true;
 	
-	if (this.others.indexOf(civ) < 0) this.findCivilization(civ, false, logText);
+	if (this.others.indexOf(civ) < 0) this.findCivilization(civ, false);
 };
 Civilization.prototype.hideSelf = function () {
 	var circle = this.known;
@@ -376,7 +357,10 @@ Society.prototype.draw = function (time) {
 		}
 	}
 	
-	console.log(s + ' ' + time + ' | ' + len + '/' + civilization_total + " > " + Math.round(allyNum) + "," + Math.round(knowNum) + "," + Math.round(knownNum));
+	console.log(s + ' ' + time + ' | ' + len + '/' + civilization_total + " > "
+		+ Math.round(allyNum * 10) / 10 + ","
+		+ Math.round(knowNum * 10) / 10 + ","
+		+ Math.round(knownNum * 10) / 10);
 };
 
 exports.Civilization	= Civilization;
