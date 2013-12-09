@@ -22,8 +22,8 @@ const CIV_ATTACK_BACK	= 0.5;		// 被攻击后反击
 const CIV_ATTACK_ANIT	= 0.5;		// 被攻击后协助反击
 const INTSTL_CIV_LIMIT	= 1;		// 具有星际探索能力的文明阀值，这个值也决定了发现别的文明的能力
 const CIV_HIDE_LIMIT	= 10000;	// 文明隐藏自身能力的标值
-const EXPAND_LIMIT		= 10000;		// 拓展的极限速度（倍）
-const HELP_LIMIT		= 10000;		// 拓展的极限速度（倍）
+const EXPAND_LIMIT		= 100;		// 拓展的极限速度（倍）
+const HELP_LIMIT		= 100;		// 拓展的极限速度（倍）
 
 const CIV_HELP_RATE		= 0.01;	// 帮助弱者文明的程度，为文明差的比例
 const CIV_ATTACK_DAMAGE	= 0.5;	// 文明攻击力，为文明的比例
@@ -51,7 +51,7 @@ function Civilization () {
 	this.charactor = {
 		showSelf		: random(CIV_SHOW, true),			// 这个值决定了是否主动向新发现的文明宣告自己的存在；一旦告知，则对方文明所有联盟文明都会知道自己的存在
 		attack			: random(CIV_ATCK, true),			// 一旦发现新文明则主动发动攻击。被攻击的文明的所有联盟文明都将知道其存在，且在全局范围自身隐蔽性降低。
-		helpWeeker		: random(CIV_HELP, true), 			// 一旦已知文明比自己落后就提供帮助
+		helpWeaker		: random(CIV_HELP, true), 			// 一旦已知文明比自己落后就提供帮助
 		hideAfterAttack	: random(CIV_ATTACK_HIDE, true),	// 一旦被攻击就隐藏自身的概率；如果为false，则一旦被攻击就立刻反击。
 		helpAfterAttack	: random(CIV_ATTACK_HELP, true),	// 在联盟文明被攻击时提供帮助
 		backAfterAttack	: random(CIV_ATTACK_BACK, true),	// 在被攻击时攻击攻击者
@@ -65,6 +65,9 @@ function Civilization () {
 	
 	this.powerHide = 0;
 	this.powerSeek = 0;
+	
+	this.helpAttacked	= false;	// 每回合只能援助攻击一次
+	this.attacked		= false;	// 每回合主动攻击别人（非发现攻击）一次
 };
 
 Civilization.prototype.grow = function () {
@@ -80,7 +83,7 @@ Civilization.prototype.grow = function () {
 	this.civilization += speed;
 	if (this.civilization > CIV_LIMIT) this.civilization = CIV_LIMIT;
 	
-	this.hideSelf();
+	this.helpAttacked = false;
 };
 Civilization.prototype.hidePower = function () {
 	if (this.charactor.showSelf) {
@@ -113,7 +116,9 @@ Civilization.prototype.findCivilization = function (civ, isInform) {
 		var allies = getAllies(this);
 		var l = allies.length, i;
 		for (i = 0; i < l; i += 1) {
-			allies[i].findCivilization(civ, true);
+			if (allies[i] !== civ && allies[i] !== this) {
+				allies[i].findCivilization(civ, true);
+			}
 		}
 	}
 	
@@ -123,7 +128,7 @@ Civilization.prototype.findCivilization = function (civ, isInform) {
 	}
 	
 	// 如果是帮助弱者的性格，则判断对方比自己弱，若真则帮助对方
-	if (this.charactor.helpWeeker) {
+	if (this.charactor.helpWeaker) {
 		if (civ.civilization < this.civilization) {
 			civ.beenHelped(this);
 		}
@@ -141,7 +146,7 @@ Civilization.prototype.beenAttacked = function (civ, isBack) {
 	// 性格转变
 	if (random() < this.mental) this.charactor.showSelf		= false;
 	if (random() < this.mental) this.charactor.attack		= true;
-	if (random() < this.mental) this.charactor.helpWeeker	= false;
+	if (random() < this.mental) this.charactor.helpWeaker	= false;
 	
 	if (isBack !== true && this.others.indexOf(civ) < 0) this.findCivilization(civ, false);
 
@@ -155,7 +160,8 @@ Civilization.prototype.beenAttacked = function (civ, isBack) {
 		ally = this.ally[i];
 		if (!isNull(ally) && ally !== this && ally !== civ) {
 			// 协助反击
-			if (ally.charactor.anitAfterAttack) {
+			if (ally.charactor.anitAfterAttack && ally.helpAttacked !== true) {
+				ally.helpAttacked = true;
 				civ.beenAttacked(ally, true);
 			}
 			// 协助重建
@@ -186,7 +192,7 @@ Civilization.prototype.beenHelped = function (civ) {
 	// 性格转变
 	if (random() < this.mental) this.charactor.showSelf		= true;
 	if (random() < this.mental) this.charactor.attack		= false;
-	if (random() < this.mental) this.charactor.helpWeeker	= true;
+	if (random() < this.mental) this.charactor.helpWeaker	= true;
 	
 	if (this.others.indexOf(civ) < 0) this.findCivilization(civ, false);
 };
@@ -201,6 +207,7 @@ Civilization.prototype.hideSelf = function () {
 		if (j >= 0) circle[i].ally.splice(j, 1);
 	}
 	this.known = [];
+	this.ally = [];
 };
 
 function getAllies (civ) {
@@ -231,10 +238,13 @@ function getAllies (civ) {
 	return allies;
 }
 function getDistance (civA, civB) {
-	var dX, dY, dZ;
-	dX = civA.position.x - civB.position.x;
-	dY = civA.position.y - civB.position.y;
-	dZ = civA.position.z - civB.position.z;
+	var dX, dY, dZ, half = ENV_SIZE / 2;
+	dX = Math.abs(civA.position.x - civB.position.x);
+	dY = Math.abs(civA.position.y - civB.position.y);
+	dZ = Math.abs(civA.position.z - civB.position.z);
+	if (dX > half) dX = ENV_SIZE - dX;
+	if (dY > half) dY = ENV_SIZE - dY;
+	if (dZ > half) dZ = ENV_SIZE - dZ;
 	dX *= dX;
 	dY *= dY;
 	dZ *= dZ;
@@ -289,12 +299,13 @@ Society.prototype.develop = function () {
 			civB = civA.others[j];
 			if (isNull(civB) || civB.civilization <= 0) continue;
 			// 如果是帮助弱者的性格，则判断是否需要给予帮助
-			if (civA.charactor.helpWeeker) {
+			if (civA.charactor.helpWeaker) {
 				if (civA.civilization > civB.civilization) {
 					civB.beenHelped(civA);
 				}
 			}
-			if (civA.charactor.attack) {
+			if (civA.charactor.attack && civA.attacked !== true) {
+				civA.attacked = true;
 				civB.beenAttacked(civA);
 			}
 		}
@@ -304,6 +315,16 @@ Society.prototype.develop = function () {
 	for (i = len - 1; i >= 0; i -= 1) {
 		civA = this.civilizations[i];
 		if (civA.civilization <= 0) {
+			civA.hideSelf();
+			for (j = 0; j < len; j += 1) {
+				civB = this.civilizations[j];
+				if (!isNull(civB)) {
+					distance = civB.known.indexOf(civA);
+					if (distance >= 0) {
+						civB.known.splice(distance, 1);
+					}
+				}
+			}
 			this.civilizations.splice(i, 1);
 		}
 	}
@@ -314,20 +335,23 @@ Society.prototype.draw = function (time) {
 	
 	var allyNum = 0;
 	var knowNum = 0;
-	var knownNum = 0;
+	var attacker = 0;
+	var helper = 0;
+	var shower = 0;
 	for (i = 0; i < len; i += 1) {
 		civil = this.civilizations[i];
 		civ += civil.civilization;
 		exp += civil.explore;
 		allyNum += civil.ally.length;
 		knowNum += civil.others.length;
-		knownNum += civil.known.length;
+		if (civil.charactor.attack) attacker += 1;
+		if (civil.charactor.helpWeaker) helper += 1;
+		if (civil.charactor.showSelf) shower += 1;
 	}
 	civ /= len;
 	exp /= len;
 	allyNum /= len;
 	knowNum /= len;
-	knownNum /= len;
 	
 	var total = 100;
 	var value1 = Math.round(civ / CIV_LIMIT * total);
@@ -359,8 +383,8 @@ Society.prototype.draw = function (time) {
 	
 	console.log(s + ' ' + time + ' | ' + len + '/' + civilization_total + " > "
 		+ Math.round(allyNum * 10) / 10 + ","
-		+ Math.round(knowNum * 10) / 10 + ","
-		+ Math.round(knownNum * 10) / 10);
+		+ Math.round(knowNum * 10) / 10 + "|"
+		+ helper + "," + attacker + "," + shower);
 };
 
 exports.Civilization	= Civilization;
