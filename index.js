@@ -1,8 +1,14 @@
-require('./utils');
+process.on('uncaughtException', function(err) {
+	console.log('Caught exception: ' + err);
+	recorder.show();
+});
 
-const libClass = require('./classCivilization');
-const classCiv = libClass.Civilization;
-const classSoc = libClass.Society;
+require('./utils');
+const recorder	= require('./recorder');
+
+const libClass	= require('./classCivilization');
+const classCiv	= libClass.Civilization;
+const classSoc	= libClass.Society;
 
 var society = new classSoc();
 
@@ -19,6 +25,9 @@ function develop () {
 	developEra -= 1;
 	if (developEra > 0) {
 		process.nextTick(develop);
+	}
+	else {
+		recorder.show();
 	}
 }
 develop();

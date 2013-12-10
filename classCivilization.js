@@ -3,7 +3,8 @@
  * 这里的文明都是单星模式，所以不考虑文明分裂导致的内耗等问题。
  */
 
-const utils = require('./utils');
+const utils		= require('./utils');
+const recorder	= require('./recorder');
 
 const isNull = utils.isNull;
 const random = utils.random;
@@ -32,7 +33,7 @@ const CIV_BIRTH_RATE	= 0.5;	// 每一轮新文明诞生几率
 
 var civilization_total = 0;		// 目前文明总数
 
-function Civilization () {
+function Civilization (year) {
 	this.id = civilization_total;
 	civilization_total += 1;
 	
@@ -68,9 +69,23 @@ function Civilization () {
 	
 	this.helpAttacked	= false;	// 每回合只能援助攻击一次
 	this.attacked		= false;	// 每回合主动攻击别人（非发现攻击）一次
+	
+	// 记录部分
+	this.birth		= year;
+	this.age		= 0;
+	this.attack		= 0;
+	this.beattacked	= 0;
+	this.help		= 0;
+	this.behelped	= 0;
+	this.maxCiv		= 0;
+	this.maxExp		= 0;
+	this.maxFound	= 0;
+	this.maxAlly	= 0;
 };
 
 Civilization.prototype.grow = function () {
+	this.age += 1;
+	
 	var exp_rate = this.civilization / INTSTL_CIV_LIMIT / Math.pow(this.explore, 3) * (ENV_SIZE - this.explore) / ENV_SIZE * this.curiosity;
 	exp_rate *= Math.min(this.civilization / INTSTL_CIV_LIMIT - this.explore, 1);
 	if (exp_rate > this.explore * EXPAND_LIMIT) exp_rate = this.explore * EXPAND_LIMIT;
@@ -138,6 +153,14 @@ Civilization.prototype.beenAttacked = function (civ, isBack) {
 	if (this === civ) return;
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
+	
+	this.beattacked	+= 1;
+	civ.attack		+= 1;
+	
+	// 如果是友方文明，则从盟友状态解除
+	var i;
+	i = this.ally.indexOf(civ);
+	if (i >= 0) this.ally.splice(i, 1);
 
 	// 遭受打击
 	this.civilization -= civ.civilization * CIV_ATTACK_DAMAGE;
@@ -155,7 +178,7 @@ Civilization.prototype.beenAttacked = function (civ, isBack) {
 		civ.beenAttacked(this, true);
 	}
 	// 盟友行为
-	var l = this.ally.length, i, ally;
+	var l = this.ally.length, ally;
 	for (i = 0; i < l; i += 1) {
 		ally = this.ally[i];
 		if (!isNull(ally) && ally !== this && ally !== civ) {
@@ -183,6 +206,14 @@ Civilization.prototype.beenHelped = function (civ) {
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 	
+	this.behelped	+= 1;
+	civ.help		+= 1;
+	
+	// 如果不是友方文明，则加为盟友
+	var i;
+	i = this.ally.indexOf(civ);
+	if (i < 0) this.ally.push(civ);
+
 	// 获得帮助
 	var help = (civ.civilization - this.civilization) * CIV_HELP_RATE * (CIV_LIMIT - this.civilization) / CIV_LIMIT;
 	if (help > this.civilization * HELP_LIMIT) help = this.civilization * HELP_LIMIT;
@@ -252,16 +283,20 @@ function getDistance (civA, civB) {
 }
 
 function Society () {
-	this.civilizations = [new Civilization()];
+	this.year = 0;
+	this.civilizations = [new Civilization(this.year)];
 }
 Society.prototype.develop = function () {
 	var len = this.civilizations.length;
 	var i;
 	var civA;
 	
+	this.year += 1;
+	recorder.newYear(this.year);
+	
 	// 按照一定的几率创建新文明
 	if (len < CIV_MAX && random() < CIV_BIRTH_RATE) {
-		this.civilizations.push(new Civilization());
+		this.civilizations.push(new Civilization(this.year));
 		len += 1;
 	}
 	
@@ -313,9 +348,14 @@ Society.prototype.develop = function () {
 	
 	// 去除已经死亡的文明
 	for (i = len - 1; i >= 0; i -= 1) {
+		if (civA.explore > civA.maxExp) civA.maxExp = civA.explore;
+		if (civA.civilization > civA.maxCiv) civA.maxCiv = civA.civilization;
+		if (civA.ally.length > civA.maxAlly) civA.maxAlly = civA.ally.length;
+		if (civA.others.length > civA.maxFound) civA.maxFound = civA.others.length;
 		civA = this.civilizations[i];
 		if (civA.civilization <= 0) {
 			civA.hideSelf();
+			recorder.funeral(civA);
 			for (j = 0; j < len; j += 1) {
 				civB = this.civilizations[j];
 				if (!isNull(civB)) {
