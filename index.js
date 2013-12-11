@@ -1,7 +1,7 @@
-process.on('uncaughtException', function(err) {
+/*process.on('uncaughtException', function(err) {
 	console.log('Caught exception: ' + err);
 	recorder.show();
-});
+});*/
 
 require('./utils');
 const recorder	= require('./recorder');
@@ -15,7 +15,7 @@ var society = new classSoc();
 var developEra = 200;
 var era = 0;
 function develop () {
-	var i, step = 15;
+	var i, step = 50;
 	for (i = 0; i < step; i += 1) {
 		society.develop(era);
 	}

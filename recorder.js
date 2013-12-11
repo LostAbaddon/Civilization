@@ -27,7 +27,7 @@ function format (text, length) {
 	return result;
 }
 function deadFilter (civ) {
-	return civ.Civilization > 10000 && civ.Explore > 1000;
+	return civ.Civilization > 9000000 && civ.Explore > 1500;
 }
 
 exports.newYear = function (year) {
