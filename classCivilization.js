@@ -27,7 +27,7 @@ const EXPAND_LIMIT		= 100;		// 拓展的极限速度（倍）
 const HELP_LIMIT		= 100;		// 拓展的极限速度（倍）
 
 const CIV_HELP_RATE		= 0.01;	// 帮助弱者文明的程度，为文明差的比例
-const CIV_ATTACK_DAMAGE	= 0.5;	// 文明攻击力，为文明的比例
+const CIV_ATTACK_DAMAGE	= 0.8;	// 文明攻击力，为文明的比例
 
 const CIV_BIRTH_RATE	= 0.5;	// 每一轮新文明诞生几率
 
