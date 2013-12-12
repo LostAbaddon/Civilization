@@ -29,8 +29,6 @@ const HELP_LIMIT		= 100;		// 拓展的极限速度（倍）
 const CIV_HELP_RATE		= 0.01;	// 帮助弱者文明的程度，为文明差的比例
 const CIV_ATTACK_DAMAGE	= 0.5;	// 文明攻击力，为文明的比例
 
-const CIV_HELP_LIMIT	= 1;	// 每次帮助的文明数
-
 const CIV_BIRTH_RATE	= 0.5;	// 每一轮新文明诞生几率
 
 var civilization_total	= 0;	// 目前文明总数
@@ -80,7 +78,10 @@ function Civilization (year) {
 	this.helpTask	= [];
 	this.attackTask	= [];
 	
-	this.helpTime	= 0;
+	this.helpScore	= 0;
+	
+	this.beenAttackedScore	= 0;
+	this.beenHelpedScore	= 0;
 	
 	// 记录部分
 	this.birth		= year;
@@ -101,8 +102,26 @@ function Civilization (year) {
 Civilization.prototype.grow = function () {
 	this.age += 1;
 	
-	this.helpTime = CIV_HELP_LIMIT;
-
+	// 性格转变
+	// 收到的攻击是否比收到的援助多
+	if (this.beenAttackedScroe > this.beenHelpedScore) {
+		if (random() < this.mental) this.charactor.showSelf	= false;
+		if (random() < this.mental) this.charactor.attack	= true;
+	}
+	else if (this.beenHelpedScore > this.beenAttackedScore) {
+		if (random() < this.mental) this.charactor.showSelf	= true;
+		if (random() < this.mental) this.charactor.attack	= false;
+	}
+	// 付出大于获得
+	if (this.civilization - this.helpScore > this.beenHelpedScore) {
+		if (random() < this.mental) this.charactor.helpWeaker	= false;
+	}
+	else {
+		if (random() < this.mental) this.charactor.helpWeaker	= true;
+	}
+	this.beenAttackedScore	= 0;
+	this.beenHelpedScroe	= 0;
+	
 	var exp_rate = this.civilization / INTSTL_CIV_LIMIT / Math.pow(this.explore, 3) * (ENV_SIZE - this.explore) / ENV_SIZE * this.curiosity;
 	exp_rate *= Math.min(this.civilization / INTSTL_CIV_LIMIT - this.explore, 1);
 	if (exp_rate > this.explore * EXPAND_LIMIT) exp_rate = this.explore * EXPAND_LIMIT;
@@ -114,6 +133,8 @@ Civilization.prototype.grow = function () {
 	var speed = this.civilization / (1 + rate * rate) * (CIV_LIMIT - this.civilization) / CIV_LIMIT;
 	this.civilization += speed;
 	if (this.civilization > CIV_LIMIT) this.civilization = CIV_LIMIT;
+
+	this.helpScore = this.civilization;
 };
 Civilization.prototype.hidePower = function () {
 	if (this.charactor.showSelf) {
@@ -155,7 +176,7 @@ Civilization.prototype.findCivilization = function (civ) {
 	}
 	
 	// 如果是帮助弱者的性格，则判断对方比自己弱，若真则帮助对方
-	if (this.charactor.helpWeaker) {
+	if (!this.charactor.attack && this.charactor.helpWeaker) {
 		if (civ.civilization < this.civilization) {
 			civ.beenHelped(this);
 		}
@@ -172,9 +193,9 @@ Civilization.prototype.beenAttacked = function (civ) {
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 	
-	this.beattacked	+= 1;
-	civ.attack		+= 1;
-	warPerYear		+= 1;
+	this.beattacked		+= 1;
+	civ.attack			+= 1;
+	warPerYear			+= 1;
 	
 	// 如果是友方文明，则从盟友状态解除
 	var i;
@@ -182,13 +203,10 @@ Civilization.prototype.beenAttacked = function (civ) {
 	if (i >= 0) this.ally.splice(i, 1);
 
 	// 遭受打击
-	this.civilization -= civ.civilization * CIV_ATTACK_DAMAGE;
+	var attack = civ.civilization * CIV_ATTACK_DAMAGE;
+	this.civilization -= attack;
 	if (this.civilization < 0) this.civilization = 0;
-	
-	// 性格转变
-	if (random() < this.mental) this.charactor.showSelf		= false;
-	if (random() < this.mental) this.charactor.attack		= true;
-	if (random() < this.mental) this.charactor.helpWeaker	= false;
+	this.beenAttackedScore += attack;
 	
 	if (this.others.indexOf(civ) < 0) this.findCivilization(civ);
 
@@ -227,12 +245,11 @@ Civilization.prototype.beenHelped = function (civ) {
 	if (this === civ) return;
 
 	// 对已死的文明，就不救了
-	if (civ.helpTime < 0) return;
+	if (civ.helpScore < 0) return;
 	if (civ.civilization <= 0) return;
 	if (this.civilization <= 0) return;
 	
 	if (random() < 0.5) return;
-	civ.helpTime -= 1;
 	
 	this.behelped	+= 1;
 	civ.help		+= 1;
@@ -248,18 +265,15 @@ Civilization.prototype.beenHelped = function (civ) {
 	if (help > this.civilization * HELP_LIMIT) help = this.civilization * HELP_LIMIT;
 	this.civilization += help;
 	if (this.civilization > CIV_LIMIT) this.civilization = CIV_LIMIT;
-	
-	// 性格转变
-	if (random() < this.mental) this.charactor.showSelf		= true;
-	if (random() < this.mental) this.charactor.attack		= false;
-	if (random() < this.mental) this.charactor.helpWeaker	= true;
+	civ.helpScore -= help;
+	this.beenHelpedScore += help
 	
 	if (this.others.indexOf(civ) < 0) this.findCivilization(civ);
 };
 Civilization.prototype.dealHelpRequest = function () {
 	var l = this.helpTask.length, i;
 	for (i = 0; i < l; i += 1) {
-		if (this.helpTime > 0) this.helpTask[i].beenHelped(this);
+		if (this.helpScore > 0) this.helpTask[i].beenHelped(this);
 	}
 };
 Civilization.prototype.hideSelf = function () {
@@ -396,7 +410,7 @@ Society.prototype.develop = function () {
 			civB = civA.others[j];
 			if (isNull(civB) || civB.civilization <= 0) continue;
 			// 如果是帮助弱者的性格，则判断是否需要给予帮助
-			if (civA.charactor.helpWeaker && civA.helpTime > 0) {
+			if (!civA.charactor.attack && civA.charactor.helpWeaker && civA.helpScore > 0) {
 				if (civA.civilization > civB.civilization) {
 					civB.beenHelped(civA);
 				}

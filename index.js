@@ -15,7 +15,7 @@ var society = new classSoc();
 var developEra = 200;
 var era = 0;
 function develop () {
-	var i, step = 50;
+	var i, step = 25;
 	for (i = 0; i < step; i += 1) {
 		society.develop(era);
 	}
