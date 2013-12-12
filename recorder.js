@@ -3,7 +3,8 @@ var logs = {};
 
 // 当前的记录
 var currentEra = 0;
-var currentSheet;
+
+var eraLength = 10;
 
 // 记录所以死去的文明
 var deads = [];
@@ -19,11 +20,12 @@ function showDead (dead) {
 	result = result + ' | ' + format(dead.Age === 0 ? 0 : Math.round(dead.ChrShow / dead.Age * 10000) / 100, 5);
 	return result;
 }
-function format (text, length) {
+function format (text, length, char) {
+	char = char || ' ';
 	text = '' + text;
 	var len = text.length;
 	var i, result = text;
-	for (i = len; i < length; i += 1) result = result + ' ';
+	for (i = len; i < length; i += 1) result = result + char;
 	return result;
 }
 function deadFilter (civ) {
@@ -32,15 +34,10 @@ function deadFilter (civ) {
 
 exports.newYear = function (year) {
 	currentEra = year;
-	logs[year] = logs[year] || {
-		deads	: 0,
-		attacks	: 0,
-		helps	: 0
-	};
-	currentSheet = logs[year];
 };
 
-exports.record = function () {
+exports.record = function (record) {
+	logs[currentEra] = record;
 };
 
 exports.funeral = function (civ) {
@@ -62,7 +59,7 @@ exports.funeral = function (civ) {
 	});
 };
 
-exports.show = function () {
+exports.showDead = function () {
 	console.log(
 		format('', 2) +
 		format('ID', 8) +
@@ -81,3 +78,88 @@ exports.show = function () {
 		format('Show', 4));
 	console.log(deads.filter(deadFilter).map(showDead));
 };
+
+exports.setEraLength = function (len) {
+	eraLength = len;
+};
+
+exports.reset = function () {
+	currentEra = 0;
+	deads = [];
+	logs = {};
+};
+
+function getID (index) {
+	var id = 'hasNew';
+	switch (index) {
+		case 1:
+			id = 'dead';
+		break;
+		case 2:
+			id = 'live';
+		break;
+		case 3:
+			id = 'civ';
+		break;
+		case 4:
+			id = 'exp';
+		break;
+		case 5:
+			id = 'founds';
+		break;
+		case 6:
+			id = 'allies';
+		break;
+		case 7:
+			id = 'attackers';
+		break;
+		case 8:
+			id = 'helpers';
+		break;
+		case 9:
+			id = 'showers';
+		break;
+		case 10:
+			id = 'wars';
+		break;
+		case 11:
+			id = 'warPower';
+		break;
+		case 12:
+			id = 'help';
+		break;
+		case 13:
+			id = 'helpPower';
+		break;
+	}
+	return id;
+}
+exports.show = function (order) {
+	order = getID(order);
+
+	var LG = Object.keys(logs);
+	LG = LG.map(function (index) {return logs[index]});
+
+	var l = LG.length, i, sheet = [], year = 0, record = 0, max = 0, min = 1000000000;
+	for (i = 0; i < l; i += 1) {
+		record += LG[i][order];
+		year += 1;
+		if (year === eraLength) {
+			if (record > max) max = record;
+			if (record < min) min = record;
+			year = 0;
+			sheet.push(record);
+			record = 0;
+		}
+	}
+	
+	console.log(order + "  | MIN = " + min + "   MAX = " + max);
+	
+	var total = 120, value;
+	l = sheet.length;
+	max = Math.ceil(max);
+	for (i = 0; i < l; i += 1) {
+		value = Math.round(total * sheet[i] / max);
+		console.log(format('', value, '*'));
+	}
+}

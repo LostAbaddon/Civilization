@@ -34,6 +34,8 @@ const CIV_BIRTH_RATE	= 0.5;	// 每一轮新文明诞生几率
 var civilization_total	= 0;	// 目前文明总数
 var warPerYear			= 0;	// 每年战争次数
 var helpPerYear			= 0;	// 每年援助次数
+var warPower			= 0;	// 每年战争次数
+var helpPower			= 0;	// 每年援助次数
 
 var beenAttacked	= [];
 
@@ -206,7 +208,8 @@ Civilization.prototype.beenAttacked = function (civ) {
 	var attack = civ.civilization * CIV_ATTACK_DAMAGE;
 	this.civilization -= attack;
 	if (this.civilization < 0) this.civilization = 0;
-	this.beenAttackedScore += attack;
+	this.beenAttackedScore	+= attack;
+	warPower				+= attack;
 	
 	if (this.others.indexOf(civ) < 0) this.findCivilization(civ);
 
@@ -265,8 +268,9 @@ Civilization.prototype.beenHelped = function (civ) {
 	if (help > this.civilization * HELP_LIMIT) help = this.civilization * HELP_LIMIT;
 	this.civilization += help;
 	if (this.civilization > CIV_LIMIT) this.civilization = CIV_LIMIT;
-	civ.helpScore -= help;
-	this.beenHelpedScore += help
+	civ.helpScore			-= help;
+	this.beenHelpedScore	+= help;
+	helpPower				+= help;
 	
 	if (this.others.indexOf(civ) < 0) this.findCivilization(civ);
 };
@@ -339,9 +343,12 @@ Society.prototype.develop = function () {
 	var len = this.civilizations.length;
 	var i;
 	var civA;
+	var hasNew = false;
 	
-	warPerYear = 0;
-	helpPerYear = 0;
+	warPerYear	= 0;
+	helpPerYear	= 0;
+	warPower	= 0;
+	helpPower	= 0;
 	
 	this.year += 1;
 	recorder.newYear(this.year);
@@ -350,6 +357,7 @@ Society.prototype.develop = function () {
 	if (len < CIV_MAX && random() < CIV_BIRTH_RATE) {
 		this.civilizations.push(new Civilization(this.year));
 		len += 1;
+		hasNew = true;
 	}
 	
 	// 每个文明自己的发展
@@ -421,6 +429,7 @@ Society.prototype.develop = function () {
 		}
 	}
 	
+	var dead = 0, attacker = 0, helper = 0, shower = 0, found = 0, ally = 0, civ = 0, exp = 0;
 	for (i = len - 1; i >= 0; i -= 1) {
 		civA = this.civilizations[i];
 
@@ -429,12 +438,26 @@ Society.prototype.develop = function () {
 		if (civA.civilization > civA.maxCiv) civA.maxCiv = civA.civilization;
 		if (civA.ally.length > civA.maxAlly) civA.maxAlly = civA.ally.length;
 		if (civA.others.length > civA.maxFound) civA.maxFound = civA.others.length;
-		if (civA.charactor.attack) civA.atckRate += 1;
-		if (civA.charactor.helpWeaker) civA.helpRate += 1;
-		if (civA.charactor.showSelf) civA.showRate += 1;
+		if (civA.charactor.attack) {
+			civA.atckRate += 1;
+			attacker += 1;
+		}
+		else if (civA.charactor.helpWeaker) {
+			civA.helpRate += 1;
+			helper += 1;
+		}
+		if (civA.charactor.showSelf) {
+			civA.showRate += 1;
+			shower += 1;
+		}
+		found += civA.others.length;
+		ally += civA.ally.length;
+		civ += civA.civilization;
+		exp += civA.explore;
 
 		// 去除已经死亡的文明
 		if (civA.civilization <= 0) {
+			dead += 1;
 			civA.hideSelf();
 			recorder.funeral(civA);
 			for (j = 0; j < len; j += 1) {
@@ -449,6 +472,24 @@ Society.prototype.develop = function () {
 			this.civilizations.splice(i, 1);
 		}
 	}
+	
+	// 记录
+	recorder.record({
+		hasNew		: hasNew,
+		dead		: dead,
+		live		: len,
+		civ			: civ / len,
+		exp			: exp / len,
+		founds		: found / len,
+		allies		: ally / len,
+		attackers	: attacker,
+		helpers		: helper,
+		showers		: shower,
+		wars		: warPerYear,
+		warPower	: warPower,
+		help		: helpPerYear,
+		helpPower	: helpPower
+	});
 };
 Society.prototype.draw = function (time) {
 	var civ = 0, exp = 0;
