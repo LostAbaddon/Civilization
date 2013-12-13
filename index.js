@@ -44,6 +44,14 @@ function setVar (command) {
 		recorder.setEraLength(parseInt(command[1]));
 		console.log('Set Done.');
 	}
+	else if (command[0] === 'evolute') {
+		evoluteEra = parseInt(command[1]);
+		console.log('Set Done.');
+	}
+	else if (command[0] === 'step') {
+		stepPerEra = parseInt(command[1]);
+		console.log('Set Done.');
+	}
 	else {
 		console.log('Missing Command: ' + command[0] + " = " + command[1]);
 	}
