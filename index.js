@@ -118,6 +118,9 @@ process.stdin.on('data', function (chunk) {
 	else if (chunk === 'hlpP') {
 		recorder.show(13);
 	}
+	else if (chunk === 'lifeDist') {
+		recorder.showLiveDist(society);
+	}
 	else if (chunk === 'restart') {
 		era = 0;
 		developEra = evoluteEra;

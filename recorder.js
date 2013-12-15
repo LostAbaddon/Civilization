@@ -160,6 +160,32 @@ exports.show = function (order) {
 	max = Math.ceil(max);
 	for (i = 0; i < l; i += 1) {
 		value = Math.round(total * sheet[i] / max);
-		console.log(format('', value, '*'));
+		console.log(format('', value, '='));
 	}
 }
+exports.showLiveDist = function (society) {
+	var lifes = society.civilizations.map(
+		function (civ) {
+			return civ.birth;
+		}
+	);
+	var len, i, dist = [];
+	len = Math.ceil(currentEra / eraLength);
+	for (i = 0; i < len; i += 1) {
+		dist[i] = 0;
+	}
+	len = lifes.length;
+	for (i = 0; i < len; i += 1) {
+		dist[Math.floor(lifes[i] / eraLength)] += 1;
+	}
+	len = dist.length;
+	var max = 0;
+	for (i = 0; i < len; i += 1) {
+		if (dist[i] > max) max = dist[i];
+	}
+	var total = 120, value;
+	for (i = 0; i < len; i += 1) {
+		value = Math.round(total * dist[i] / max);
+		console.log(format('', value, '='));
+	}
+};
