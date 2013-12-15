@@ -1,14 +1,19 @@
+/**
 process.on('uncaughtException', function(err) {
 	console.log('Caught exception: ' + err);
 	showResult();
 });
+/**/
 
 require('./utils');
 const recorder	= require('./recorder');
 
-const libClass	= require('./classCivilization');
-const classCiv	= libClass.Civilization;
-const classSoc	= libClass.Society;
+const libClassA	= require('./classResource');
+const libClassB	= require('./classCivilization');
+
+const classUni	= libClassA.Universe;
+const classCiv	= libClassB.Civilization;
+const classSoc	= libClassB.Society;
 
 var society = new classSoc();
 
@@ -57,8 +62,12 @@ function setVar (command) {
 	}
 }
 
+console.log(1);
+var uni = new classUni();
+console.log(2);
+
 var processStep = 0;
-process.stdin.resume();
+//process.stdin.resume();
 process.stdin.on('data', function (chunk) {
 	if (processStep === 0) return;
 
@@ -137,4 +146,4 @@ process.stdin.on('data', function (chunk) {
 	console.log('>>');
 });
 
-develop();
+//develop();
