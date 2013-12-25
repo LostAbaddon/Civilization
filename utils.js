@@ -13,5 +13,15 @@ function random (min, max) {
 	return min + (max - min) * Math.random();
 }
 
+function format (text, length, char) {
+	char = char || ' ';
+	text = '' + text;
+	var len = text.length;
+	var i, result = text;
+	for (i = len; i < length; i += 1) result = result + char;
+	return result;
+}
+
 exports.isNull = isNull;
 exports.random = random;
+exports.format = format;

@@ -8,14 +8,21 @@ const recorder	= require('./recorder');
 const isNull = utils.isNull;
 const random = utils.random;
 
-const ENV_SIZE			= 10000;	// 宇宙尺寸
-const STAR_COUNT		= 10000;	// 星球总数
+const STAR_COUNT		= 1000;	// 星球总数
+//const STAR_COUNT		= 10000;	// 星球总数
 const RESOURCE_COUNT	= 100000;	// 每个星球上的资源上限
 
-const SPACE_RESOURCE			= 1;	// 星际空间的资源值
-const STAR_RESOURCE_MIN			= 100;	// 星球资源的最小值
-const STAR_RESOURCE_MAX			= 1000;	// 星球资源的最大值
-const CIVILIZATION_PER_RESOURCE	= 10000;	// 一点资源可以支持多少文明值
+const SPACE_RESOURCE			= 1;		// 星际空间的资源值
+const STAR_RESOURCE_MIN			= 10000;	// 星球资源的最小值
+const STAR_RESOURCE_MAX			= 100000;	// 星球资源的最大值
+
+const STAR_OCCUPY_DESTROY	= 0.5;			// 一颗星球被占领时已探索区域的折损率
+const STAR_EXPAND_RATE		= 0.001;		// 每单位文明值所提供的推广探索区域的能力
+const STAR_EXPAND_CONSUME	= 10000;		// 维持并推广探索区域所消耗的文明点
+const STAR_EXPAND_DECAY		= 10;			// 星球探索范围每纪年的自然衰败率
+const STAR_EXPAND_LIMIT		= 10000;		// 每单位文明值支持的星球每个纪元探索区域扩展速度的极限，是已探索区域的倍数
+const CIV_PER_RESOURCE		= 10000;			// 一点资源可以支持多少文明值
+
 
 function classStar () {
 	this.position = {
@@ -24,10 +31,29 @@ function classStar () {
 		z	: Math.floor(random(ENV_SIZE))
 	};
 	this.resource = Math.round(random(STAR_RESOURCE_MIN, STAR_RESOURCE_MAX));
-	this.civilization = -1;
+	this.civilization = null;
+	this.explore = 1;
+	this.size = 1;
 }
-classStar.prototype.getCivilizationLimit = function () {
-	return this.resource * CIVILIZATION_PER_RESOURCE;
+classStar.prototype.occupy = function (civ) {
+	this.civilization = civ;
+	this.explore *= STAR_OCCUPY_DESTROY;
+	if (this.explore < 1) this.explore = 1;
+};
+classStar.prototype.expand = function (civ) {
+	var rate_limit = civ.civilization / CIVILIZATION_LIMIT * STAR_EXPAND_LIMIT * this.explore;
+	var exp_rate = civ.civilization * STAR_EXPAND_RATE / this.size * (ENV_SIZE - this.explore) / ENV_SIZE * civ.curiosity;
+	if (exp_rate > rate_limit) exp_rate = rate_limit;
+	civ.civilization -= this.explore * this.explore * exp_rate * STAR_EXPAND_CONSUME;	// 拓张会消耗文明值
+	exp_rate -= this.size * STAR_EXPAND_DECAY;							// 每年星球探索区域的衰落
+	if (civ.civilization < 1) civ.civilization = 1;
+	this.explore += exp_rate;
+	if (this.explore < 1) this.explore = 1;
+	else if (this.explore > ENV_SIZE) this.explore = ENV_SIZE;
+	this.size = Math.pow(this.explore, 3);
+};
+classStar.prototype.support = function () {
+	return (this.resource + SPACE_RESOURCE * this.size) * CIV_PER_RESOURCE;
 };
 
 /*
@@ -43,11 +69,14 @@ function createStars (universe) {
 		}
 		else {
 			names.push(name);
-			universe.stars[i] = new classStar();
+			universe.stars[i] = star;
+			classUniverse.Resource_Limit += star.resource;
 		}
 	}
+	classUniverse.Resource_Limit += ENV_SIZE * ENV_SIZE * ENV_SIZE * SPACE_RESOURCE;
 	universe.starCount = universe.stars.length;
 }
+
 /*
  * 计算星球间距离
  */
@@ -67,7 +96,7 @@ function calculateDistance (universe) {
 	for (i = 1; i < len; i += 1) {
 		disA = universe.distances[i] || [];
 		disA[i] = 0;
-		for (j = 0; i < i; i += 1) {
+		for (j = 0; j < i; j += 1) {
 			disB = universe.distances[j] || [];
 			dis = distance(universe.stars[i], universe.stars[j]);
 			disA[j] = dis;
@@ -88,4 +117,6 @@ function classUniverse () {
 	calculateDistance(this);
 }
 
-exports.Universe = classUniverse;
+classUniverse.Resource_Limit = 0;
+
+module.exports = classUniverse;
