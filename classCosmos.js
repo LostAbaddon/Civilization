@@ -57,11 +57,12 @@ exports.evolute = function (eraLimit, yearsPerEra) {
 		logs[i][1] /= yearsPerEra;
 		logs[i][2] /= yearsPerEra;
 		line = '';
+		//console.log(logs[i]);
 		line = drawLine(line, Math.round(lineLength * logs[i][0] / CIVILIZATION_LIMIT), '0');
-		line = drawLine(line, Math.round(lineLength * logs[i][1] / ENV_SIZE), 'X');
+		line = drawLine(line, Math.round(lineLength * logs[i][1] / ENV_SIZE), '*');
 		line = drawLine(line, Math.round(lineLength * logs[i][2] / libResource.Resource_Limit), '=');
 		line = format(line, lineLength, '.');
-		line = line + ' ' + format(i, wordLen);
+		line = line + ' ' + format(i, wordLen) + ' ' + format(society.civilizations[0].stars.length);
 		console.log(line);
 	}
 };

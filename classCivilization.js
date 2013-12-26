@@ -15,8 +15,9 @@ const cosmos	= require('./classCosmos');
 const isNull = utils.isNull;
 const random = utils.random;
 
-const INTSTL_CIV_LIMIT	= 1;	// 具有星际探索能力的文明阀值，这个值也决定了发现别的文明的能力
-const EXPAND_LIMIT		= 100;	// 拓展的极限速度（倍）
+const CIV_PER_RESOURCE	= 10000;	// 一点资源可以支持多少文明值
+const EAGER_LIMIT		= 100;		// 由于环境压力而产生的各项拓张指数驾乘的上限
+
 
 /*
  * 这个类代表了所有在星际范围传播的元素，包括通讯信息、援助和攻击
@@ -75,6 +76,7 @@ function classCivilization () {
 	this.resource		= 0;
 	this.civilization	= 1;
 	this.explore		= 1;
+	this.eager			= 1;
 	
 	this.curiosity	= random(0.5, 1);
 	
@@ -102,6 +104,7 @@ classCivilization.prototype.grow = function () {
 		me.explore += star.explore;
 		me.resource += star.support();
 	});
+	this.resource *= CIV_PER_RESOURCE;
 
 	var devRate = this.civilization / CIVILIZATION_SLOWDOWN_LIMIT;
 	devRate = 1 / (1 + devRate * devRate);
@@ -111,6 +114,17 @@ classCivilization.prototype.grow = function () {
 	var civSpeed = CIVILIZATION_DEVELOP_SPEED * this.civilization * devRate * resRate * civRate;
 	this.civilization += civSpeed;
 	if (this.civilization > CIVILIZATION_LIMIT) this.civilization = CIVILIZATION_LIMIT;
+	
+	this.eager = this.civilization / this.resource;
+	this.eager *= this.eager * this.eager;
+	this.eager *= EAGER_LIMIT;
+	this.eager += 1;
+};
+classCivilization.prototype.findStar = function (star) {
+	if (star.civilization === null) {	// 如果未层被人占领
+		this.stars.push(star.id);
+		star.occupy(this);
+	}
 };
 
 module.exports = classCivilization;
